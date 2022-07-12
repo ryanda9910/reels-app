@@ -1,216 +1,82 @@
-import { useState, useEffect } from "react";
 import {
-	ScrollView,
+	Animated,
 	StyleSheet,
-	Text,
-	TextInput,
-	TouchableOpacity,
 	View,
+	TouchableOpacity,
+	Text,
 } from "react-native";
-import Constants from "expo-constants";
-import * as SQLite from "expo-sqlite";
+import React, { useState } from "react";
 
-function openDatabase() {
-	const db = SQLite.openDatabase("db.db");
-	return db;
-}
+export default function App() {
+	const [animation] = useState(new Animated.Value(250));
+	const [alreadyPress, setPress] = useState(false);
 
-const db = openDatabase();
+	const handlePress = () => {
+		setPress(true);
+		Animated.spring(animation, {
+			toValue: 450,
+			duration: 20000000,
+			friction: 1,
+			tension: 5,
+			useNativeDriver: true,
+		}).start();
+	};
 
-function Items({ done: doneHeading, onPressItem }) {
-	const [items, setItems] = useState(null);
+	const normalPress = () => {
+		setPress(false);
+		Animated.spring(animation, {
+			toValue: 250,
+			duration: 20000000,
+			friction: 1,
+			tension: 5,
+			useNativeDriver: true,
+		}).start();
+	};
 
-	useEffect(() => {
-		db.transaction((tx) => {
-			tx.executeSql(
-				`select * from items where done = ?;`,
-				[doneHeading ? 1 : 0],
-				(_, { rows: { _array } }) => setItems(_array)
-			);
-		});
-	}, []);
-
-	const heading = doneHeading ? "Completed" : "Todo";
-
-	if (items === null || items.length === 0) {
-		return null;
-	}
-
+	const trans = {
+		transform: [{ translateY: animation }],
+	};
 	return (
-		<View style={styles.sectionContainer}>
-			<Text style={styles.sectionHeading}>{heading}</Text>
-			{items.map(({ id, done, value }) => (
-				<View
-					key={id}
-					style={{
-						backgroundColor: done ? "#1c9963" : "silver",
-						borderColor: "#000",
-						borderWidth: 1,
-						padding: 8,
-						borderRadius: 8,
-						flexDirection: "row",
-						justifyContent: "space-between",
-					}}
+		<View style={{ backgroundColor: "#242c40", flex: 1 }}>
+			<Animated.View style={[styles.ball, trans]} />
+			<View style={{ position: "absolute", bottom: 10, alignSelf: "center" }}>
+				<TouchableOpacity
+					onPress={!alreadyPress ? handlePress : normalPress}
+					style={styles.button}
 				>
 					<Text
 						style={{
-							color: done ? "#fff" : "#000",
-							marginVertical: 3,
+							color: "white",
 							fontWeight: "bold",
+							paddingVertical: 15,
+							textAlign: "center",
 						}}
 					>
-						{value}
+						Bounce It
 					</Text>
-
-					{done ? (
-						<TouchableOpacity
-							style={{ backgroundColor: "red", padding: 5, borderRadius: 8 }}
-							onPress={() => onPressItem && onPressItem(id)}
-						>
-							<Text style={{ color: "white" }}>Delete</Text>
-						</TouchableOpacity>
-					) : (
-						<TouchableOpacity
-							style={{
-								backgroundColor: "#1c9963",
-								padding: 5,
-								borderRadius: 8,
-							}}
-							onPress={() => onPressItem && onPressItem(id)}
-						>
-							<Text style={{ color: "white" }}>Check</Text>
-						</TouchableOpacity>
-					)}
-				</View>
-			))}
+				</TouchableOpacity>
+			</View>
 		</View>
 	);
-}
-
-export default function App() {
-	const [text, setText] = useState(null);
-	const [forceUpdate, forceUpdateId] = useForceUpdate();
-
-	useEffect(() => {
-		db.transaction((tx) => {
-			tx.executeSql(
-				"create table if not exists items (id integer primary key not null, done int, value text);"
-			);
-		});
-	}, []);
-
-	const add = (text) => {
-		// is text empty?
-		if (text === null || text === "") {
-			return false;
-		}
-
-		db.transaction(
-			(tx) => {
-				tx.executeSql("insert into items (done, value) values (0, ?)", [text]);
-			},
-			null,
-			forceUpdate
-		);
-	};
-
-	return (
-		<View style={styles.container}>
-			<Text style={styles.heading}>📝 Note App </Text>
-			<>
-				<View style={styles.flexRow}>
-					<TextInput
-						onChangeText={(text) => setText(text)}
-						onSubmitEditing={() => {
-							add(text);
-							setText(null);
-						}}
-						placeholder="what do you need to do?"
-						placeholderTextColor={"white"}
-						style={styles.input}
-						value={text}
-					/>
-				</View>
-				<ScrollView style={styles.listArea}>
-					<Items
-						key={`forceupdate-todo-${forceUpdateId}`}
-						done={false}
-						onPressItem={(id) =>
-							db.transaction(
-								(tx) => {
-									tx.executeSql(`update items set done = 1 where id = ?;`, [
-										id,
-									]);
-								},
-								null,
-								forceUpdate
-							)
-						}
-					/>
-					<Items
-						done
-						key={`forceupdate-done-${forceUpdateId}`}
-						onPressItem={(id) =>
-							db.transaction(
-								(tx) => {
-									tx.executeSql(`delete from items where id = ?;`, [id]);
-								},
-								null,
-								forceUpdate
-							)
-						}
-					/>
-				</ScrollView>
-			</>
-		</View>
-	);
-}
-
-function useForceUpdate() {
-	const [value, setValue] = useState(0);
-	return [() => setValue(value + 1), value];
 }
 
 const styles = StyleSheet.create({
+	ball: {
+		width: 100,
+		height: 100,
+		borderRadius: 50,
+		backgroundColor: "yellow",
+		alignSelf: "center",
+	},
+	button: {
+		width: 150,
+		height: 70,
+		padding: 10,
+		borderRadius: 10,
+		backgroundColor: "#4630eb",
+		marginVertical: 50,
+	},
 	container: {
-		backgroundColor: "#242c40",
-		flex: 1,
-		paddingTop: Constants.statusBarHeight,
-	},
-	heading: {
-		fontSize: 20,
-		fontWeight: "bold",
-		color: "white",
-		textAlign: "center",
-	},
-	flexRow: {
-		flexDirection: "row",
-	},
-	input: {
-		borderColor: "#4630eb",
-		borderRadius: 4,
-		borderWidth: 1,
-		color: "white",
-		flex: 1,
-		height: 48,
-		margin: 16,
-		padding: 8,
-	},
-	listArea: {
-		backgroundColor: "#242c40",
-		flex: 1,
-		paddingTop: 16,
-	},
-	sectionContainer: {
-		marginBottom: 16,
-		backgroundColor: "#242c40",
-		marginHorizontal: 16,
-	},
-	sectionHeading: {
-		fontSize: 18,
-		color: "white",
-		fontWeight: "700",
-		backgroundColor: "#242c40",
-		marginBottom: 8,
+		alignItems: "center",
 	},
 });
