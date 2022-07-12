@@ -10,6 +10,7 @@ import {
 import Constants from "expo-constants";
 import * as SQLite from "expo-sqlite";
 
+/* openDB */
 function openDatabase() {
 	const db = SQLite.openDatabase("db.db");
 	return db;
